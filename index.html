@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ankered — Reactive Knee Stabilization</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #050810;
+    --surface: #0c1120;
+    --card: #111827;
+    --border: rgba(99,179,237,0.12);
+    --accent: #3BDFB8;
+    --accent2: #4A9EFF;
+    --accent3: #FF5C5C;
+    --text: #E8EDF5;
+    --muted: #8899AA;
+    --faint: #1e2d42;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'DM Mono', monospace;
+    background: var(--bg);
+    color: var(--text);
+    overflow-x: hidden;
+    cursor: none;
+  }
+
+  /* Custom cursor */
+  .cursor {
+    position: fixed;
+    width: 10px; height: 10px;
+    background: var(--accent);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9999;
+    transform: translate(-50%, -50%);
+    transition: transform 0.08s ease, background 0.2s;
+    mix-blend-mode: screen;
+  }
+  .cursor-ring {
+    position: fixed;
+    width: 36px; height: 36px;
+    border: 1px solid rgba(59,223,184,0.4);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9998;
+    transform: translate(-50%, -50%);
+    transition: transform 0.18s ease, width 0.2s, height 0.2s, opacity 0.2s;
+  }
+
+  /* Grid noise overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(59,223,184,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(59,223,184,0.025) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* NAV */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    padding: 22px 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    background: rgba(5,8,16,0.85);
+    backdrop-filter: blur(12px);
+  }
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 22px;
+    letter-spacing: -0.5px;
+    color: var(--text);
+    text-decoration: none;
+  }
+  .logo span { color: var(--accent); }
+  nav ul {
+    list-style: none;
+    display: flex;
+    gap: 40px;
+    align-items: center;
+  }
+  nav ul li a {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  nav ul li a:hover { color: var(--accent); }
+  .nav-cta {
+    background: var(--accent) !important;
+    color: var(--bg) !important;
+    padding: 9px 20px;
+    border-radius: 3px;
+    font-weight: 400 !important;
+    transition: opacity 0.2s !important;
+  }
+  .nav-cta:hover { opacity: 0.85; }
+
+  /* HERO */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    position: relative;
+    padding: 140px 60px 80px;
+    overflow: hidden;
+  }
+
+  /* Animated circuit lines bg */
+  .hero-bg {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    z-index: 0;
+  }
+  .circuit-line {
+    position: absolute;
+    background: linear-gradient(90deg, transparent, rgba(59,223,184,0.15), transparent);
+    height: 1px;
+    animation: sweep 6s ease-in-out infinite;
+    opacity: 0;
+  }
+  .circuit-line:nth-child(1) { top: 28%; width: 60%; left: 0; animation-delay: 0s; }
+  .circuit-line:nth-child(2) { top: 55%; width: 40%; right: 0; animation-delay: 1.8s; }
+  .circuit-line:nth-child(3) { top: 72%; width: 30%; left: 15%; animation-delay: 3.2s; }
+  @keyframes sweep {
+    0% { opacity: 0; transform: scaleX(0); transform-origin: left; }
+    30% { opacity: 1; }
+    70% { opacity: 1; }
+    100% { opacity: 0; transform: scaleX(1); transform-origin: left; }
+  }
+
+  .hero-glow {
+    position: absolute;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(59,223,184,0.07) 0%, transparent 70%);
+    right: 5%; top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    animation: pulse-glow 4s ease-in-out infinite;
+  }
+  @keyframes pulse-glow {
+    0%, 100% { opacity: 0.7; transform: translateY(-50%) scale(1); }
+    50% { opacity: 1; transform: translateY(-50%) scale(1.08); }
+  }
+
+  .hero-content {
+    position: relative;
+    z-index: 2;
+    max-width: 720px;
+  }
+  .hero-eyebrow {
+    font-size: 10px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 28px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: fade-up 0.8s ease both;
+  }
+  .hero-eyebrow::before {
+    content: '';
+    display: inline-block;
+    width: 32px;
+    height: 1px;
+    background: var(--accent);
+  }
+  .hero h1 {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: clamp(52px, 6vw, 84px);
+    line-height: 0.95;
+    letter-spacing: -3px;
+    margin-bottom: 32px;
+    animation: fade-up 0.8s 0.1s ease both;
+  }
+  .hero h1 .line2 { color: var(--accent); display: block; }
+  .hero p {
+    font-size: 14px;
+    line-height: 1.8;
+    color: var(--muted);
+    max-width: 540px;
+    margin-bottom: 48px;
+    animation: fade-up 0.8s 0.2s ease both;
+  }
+  .hero-actions {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    animation: fade-up 0.8s 0.3s ease both;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: var(--bg);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 16px 32px;
+    border: none;
+    border-radius: 3px;
+    cursor: none;
+    transition: opacity 0.2s, transform 0.2s;
+    text-decoration: none;
+    display: inline-block;
+  }
+  .btn-primary:hover { opacity: 0.85; transform: translateY(-2px); }
+  .btn-ghost {
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 16px 32px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    cursor: none;
+    transition: border-color 0.2s, color 0.2s;
+    text-decoration: none;
+    display: inline-block;
+  }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Knee animation */
+  .knee-visual {
+    position: absolute;
+    right: 8%;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2;
+    animation: fade-up 1s 0.4s ease both;
+  }
+  .knee-svg-wrap {
+    position: relative;
+    width: 320px;
+    height: 480px;
+  }
+
+  /* STATS BAR */
+  .stats-bar {
+    position: relative;
+    z-index: 1;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    padding: 28px 60px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+  }
+  .stat-item {
+    padding: 0 40px;
+    border-right: 1px solid var(--border);
+  }
+  .stat-item:first-child { padding-left: 0; }
+  .stat-item:last-child { border-right: none; }
+  .stat-num {
+    font-family: 'Syne', sans-serif;
+    font-size: 36px;
+    font-weight: 800;
+    color: var(--accent);
+    letter-spacing: -1px;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+  .stat-label {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* HOW IT WORKS */
+  section { position: relative; z-index: 1; }
+  .section-pad { padding: 120px 60px; }
+
+  .section-label {
+    font-size: 10px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .section-label::before {
+    content: '';
+    display: inline-block;
+    width: 24px; height: 1px;
+    background: var(--accent);
+  }
+  .section-title {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(36px, 4vw, 54px);
+    font-weight: 800;
+    letter-spacing: -2px;
+    line-height: 1.05;
+    margin-bottom: 16px;
+  }
+  .section-sub {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.8;
+    max-width: 480px;
+    margin-bottom: 72px;
+  }
+
+  /* Timeline steps */
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+    background: var(--border);
+  }
+  .step {
+    background: var(--card);
+    padding: 48px 40px;
+    position: relative;
+    overflow: hidden;
+    transition: background 0.3s;
+  }
+  .step:hover { background: var(--faint); }
+  .step::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .step:hover::before { opacity: 1; }
+  .step-num {
+    font-family: 'Syne', sans-serif;
+    font-size: 72px;
+    font-weight: 800;
+    color: rgba(59,223,184,0.08);
+    line-height: 1;
+    margin-bottom: 24px;
+    letter-spacing: -4px;
+    transition: color 0.3s;
+  }
+  .step:hover .step-num { color: rgba(59,223,184,0.15); }
+  .step-icon {
+    width: 40px; height: 40px;
+    margin-bottom: 20px;
+    color: var(--accent);
+  }
+  .step h3 {
+    font-family: 'Syne', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    letter-spacing: -0.5px;
+  }
+  .step p {
+    font-size: 12px;
+    line-height: 1.9;
+    color: var(--muted);
+  }
+  .step-tag {
+    display: inline-block;
+    margin-top: 20px;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    padding: 4px 10px;
+    border: 1px solid rgba(59,223,184,0.2);
+    border-radius: 2px;
+  }
+
+  /* DETECTION WINDOW */
+  .detection-section {
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .detection-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 80px;
+    align-items: center;
+  }
+  .detection-left { }
+  .detection-visual {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 40px;
+    position: relative;
+    overflow: hidden;
+  }
+  .detection-visual::after {
+    content: 'LIVE SIMULATION';
+    position: absolute;
+    top: 16px; right: 16px;
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--accent);
+    opacity: 0.6;
+  }
+
+  /* Signal chart */
+  .chart-label {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+  .signal-chart {
+    position: relative;
+    height: 100px;
+    margin-bottom: 32px;
+  }
+  .signal-chart svg { width: 100%; height: 100%; }
+
+  .param-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 8px;
+  }
+  .param-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px 20px;
+  }
+  .param-card-val {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--accent);
+    letter-spacing: -1px;
+  }
+  .param-card-label {
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+  .alert-bar {
+    margin-top: 20px;
+    background: rgba(255,92,92,0.08);
+    border: 1px solid rgba(255,92,92,0.25);
+    border-radius: 4px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--accent3);
+    animation: blink-bar 2.4s ease-in-out infinite;
+  }
+  @keyframes blink-bar {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+  .alert-dot {
+    width: 8px; height: 8px;
+    background: var(--accent3);
+    border-radius: 50%;
+    flex-shrink: 0;
+    animation: blink-dot 2.4s ease-in-out infinite;
+  }
+  @keyframes blink-dot {
+    0%, 100% { box-shadow: 0 0 4px var(--accent3); }
+    50% { box-shadow: 0 0 12px var(--accent3); }
+  }
+
+  /* TECH SPECS */
+  .specs-section { }
+  .specs-layout {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 80px;
+    align-items: start;
+  }
+  .specs-table {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .specs-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.2s;
+  }
+  .specs-row:last-child { border-bottom: none; }
+  .specs-row:hover { background: var(--faint); }
+  .specs-key {
+    padding: 16px 24px;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-right: 1px solid var(--border);
+  }
+  .specs-val {
+    padding: 16px 24px;
+    font-size: 11px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+  }
+  .specs-val.accent { color: var(--accent); }
+
+  .features-list {
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+  .feature-item {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    padding-bottom: 28px;
+    border-bottom: 1px solid var(--border);
+  }
+  .feature-item:last-child { border-bottom: none; }
+  .feature-icon-wrap {
+    width: 44px; height: 44px;
+    background: rgba(59,223,184,0.08);
+    border: 1px solid rgba(59,223,184,0.2);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: var(--accent);
+  }
+  .feature-body h4 {
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    letter-spacing: -0.3px;
+  }
+  .feature-body p {
+    font-size: 12px;
+    line-height: 1.8;
+    color: var(--muted);
+  }
+
+  /* USE CASES */
+  .use-cases-section {
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+  }
+  .use-cases-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+    background: var(--border);
+    margin-top: 64px;
+  }
+  .use-card {
+    background: var(--card);
+    padding: 48px 40px;
+    position: relative;
+    overflow: hidden;
+    transition: background 0.3s;
+  }
+  .use-card:hover { background: var(--faint); }
+  .use-card-accent {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent2), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .use-card:hover .use-card-accent { opacity: 1; }
+  .use-card-num {
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--muted);
+    margin-bottom: 28px;
+  }
+  .use-card h3 {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.8px;
+    margin-bottom: 14px;
+  }
+  .use-card p {
+    font-size: 12px;
+    line-height: 1.9;
+    color: var(--muted);
+  }
+  .use-card-tag {
+    display: inline-block;
+    margin-top: 24px;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent2);
+    padding: 4px 10px;
+    border: 1px solid rgba(74,158,255,0.2);
+    border-radius: 2px;
+  }
+
+  /* CTA FOOTER */
+  .cta-section {
+    padding: 120px 60px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .cta-glow {
+    position: absolute;
+    width: 800px; height: 400px;
+    background: radial-gradient(ellipse, rgba(59,223,184,0.06) 0%, transparent 70%);
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+  .cta-section h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(40px, 5vw, 68px);
+    font-weight: 800;
+    letter-spacing: -3px;
+    line-height: 1;
+    margin-bottom: 24px;
+    position: relative;
+  }
+  .cta-section h2 span { color: var(--accent); }
+  .cta-section p {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 48px;
+    position: relative;
+  }
+  .cta-actions {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    position: relative;
+  }
+
+  /* FOOTER */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 40px 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface);
+  }
+  .footer-logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 18px;
+    color: var(--text);
+  }
+  .footer-logo span { color: var(--accent); }
+  .footer-copy {
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+  }
+  .footer-links {
+    display: flex;
+    gap: 32px;
+  }
+  .footer-links a {
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  .footer-links a:hover { color: var(--accent); }
+
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Scroll reveal */
+  .reveal {
+    opacity: 0;
+    transform: translateY(32px);
+    transition: opacity 0.7s ease, transform 0.7s ease;
+  }
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .reveal-delay-1 { transition-delay: 0.1s; }
+  .reveal-delay-2 { transition-delay: 0.2s; }
+  .reveal-delay-3 { transition-delay: 0.3s; }
+
+  @media (max-width: 900px) {
+    nav { padding: 18px 24px; }
+    nav ul { display: none; }
+    .hero { padding: 120px 24px 80px; }
+    .knee-visual { display: none; }
+    .stats-bar { grid-template-columns: repeat(2,1fr); padding: 24px; gap: 24px; }
+    .stat-item { border-right: none; padding: 0; }
+    .section-pad { padding: 80px 24px; }
+    .steps { grid-template-columns: 1fr; }
+    .detection-grid { grid-template-columns: 1fr; gap: 40px; }
+    .specs-layout { grid-template-columns: 1fr; gap: 40px; }
+    .use-cases-grid { grid-template-columns: 1fr; }
+    footer { flex-direction: column; gap: 16px; text-align: center; padding: 32px 24px; }
+    .cta-section { padding: 80px 24px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="cursor" id="cursor"></div>
+<div class="cursor-ring" id="cursor-ring"></div>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="logo">Ank<span>er</span>ed</a>
+  <ul>
+    <li><a href="#how">How It Works</a></li>
+    <li><a href="#specs">Technology</a></li>
+    <li><a href="#use-cases">Applications</a></li>
+    <li><a href="#contact" class="nav-cta">Request Access</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg">
+    <div class="circuit-line"></div>
+    <div class="circuit-line"></div>
+    <div class="circuit-line"></div>
+  </div>
+  <div class="hero-glow"></div>
+
+  <div class="hero-content">
+    <div class="hero-eyebrow">Reactive Stabilization Technology</div>
+    <h1>
+      Catch the fall<br>
+      <span class="line2">before it falls.</span>
+    </h1>
+    <p>Ankered uses magnetometer-driven motion detection and pressure-sensing insoles to identify dangerous knee collapse events in real time — and deploys mechanical stabilizers within the critical window to prevent injury.</p>
+    <div class="hero-actions">
+      <a href="#how" class="btn-primary">See How It Works</a>
+      <a href="#specs" class="btn-ghost">Technical Specs</a>
+    </div>
+  </div>
+
+  <!-- Knee SVG diagram -->
+  <div class="knee-visual">
+    <div class="knee-svg-wrap">
+      <svg viewBox="0 0 320 480" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">
+        <!-- Leg outline upper -->
+        <path d="M130 20 C120 20 100 30 95 80 L90 200" stroke="rgba(99,179,237,0.2)" stroke-width="1.5" fill="none"/>
+        <path d="M190 20 C200 20 220 30 225 80 L230 200" stroke="rgba(99,179,237,0.2)" stroke-width="1.5" fill="none"/>
+        <!-- Femur -->
+        <rect x="100" y="30" width="120" height="180" rx="60" fill="rgba(30,45,66,0.8)" stroke="rgba(59,223,184,0.25)" stroke-width="1"/>
+        <!-- Tibia -->
+        <rect x="108" y="248" width="104" height="200" rx="52" fill="rgba(30,45,66,0.8)" stroke="rgba(59,223,184,0.25)" stroke-width="1"/>
+        <!-- Knee joint -->
+        <ellipse cx="160" cy="232" rx="62" ry="28" fill="rgba(20,35,55,0.9)" stroke="rgba(59,223,184,0.5)" stroke-width="1.5"/>
+        <ellipse cx="160" cy="232" rx="40" ry="16" fill="rgba(59,223,184,0.06)" stroke="rgba(59,223,184,0.3)" stroke-width="1"/>
+        <!-- Brace straps -->
+        <rect x="90" y="110" width="140" height="12" rx="6" fill="rgba(59,223,184,0.12)" stroke="rgba(59,223,184,0.4)" stroke-width="1"/>
+        <rect x="90" y="340" width="140" height="12" rx="6" fill="rgba(59,223,184,0.12)" stroke="rgba(59,223,184,0.4)" stroke-width="1"/>
+        <!-- Side stabilizer bars -->
+        <rect x="82" y="110" width="10" height="254" rx="5" fill="rgba(59,223,184,0.15)" stroke="rgba(59,223,184,0.5)" stroke-width="1"/>
+        <rect x="228" y="110" width="10" height="254" rx="5" fill="rgba(59,223,184,0.15)" stroke="rgba(59,223,184,0.5)" stroke-width="1"/>
+        <!-- Magnetometer chip on shin -->
+        <rect x="130" y="310" width="60" height="36" rx="4" fill="rgba(59,223,184,0.1)" stroke="rgba(59,223,184,0.6)" stroke-width="1.5"/>
+        <text x="160" y="332" text-anchor="middle" font-family="DM Mono, monospace" font-size="7" fill="rgba(59,223,184,0.8)" letter-spacing="1">MAGNETO</text>
+        <!-- Sensor dots -->
+        <circle cx="160" cy="232" r="5" fill="var(--accent)" opacity="0.9">
+          <animate attributeName="r" values="5;8;5" dur="2s" repeatCount="indefinite"/>
+          <animate attributeName="opacity" values="0.9;0.4;0.9" dur="2s" repeatCount="indefinite"/>
+        </circle>
+        <!-- Connection lines from chip -->
+        <line x1="160" y1="310" x2="160" y2="264" stroke="rgba(59,223,184,0.3)" stroke-width="1" stroke-dasharray="4,3"/>
+        <!-- Pressure sensor dots on bottom -->
+        <circle cx="130" cy="448" r="4" fill="rgba(74,158,255,0.6)" stroke="rgba(74,158,255,0.9)" stroke-width="1">
+          <animate attributeName="opacity" values="0.6;1;0.6" dur="1.8s" begin="0.4s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="160" cy="455" r="4" fill="rgba(74,158,255,0.6)" stroke="rgba(74,158,255,0.9)" stroke-width="1">
+          <animate attributeName="opacity" values="0.6;1;0.6" dur="1.8s" begin="0.8s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="190" cy="448" r="4" fill="rgba(74,158,255,0.6)" stroke="rgba(74,158,255,0.9)" stroke-width="1">
+          <animate attributeName="opacity" values="0.6;1;0.6" dur="1.8s" begin="1.2s" repeatCount="indefinite"/>
+        </circle>
+        <!-- Labels -->
+        <text x="248" y="136" font-family="DM Mono,monospace" font-size="8" fill="rgba(59,223,184,0.6)" letter-spacing="1">STABILIZER</text>
+        <text x="248" y="147" font-family="DM Mono,monospace" font-size="8" fill="rgba(59,223,184,0.6)" letter-spacing="1">RAIL</text>
+        <line x1="240" y1="140" x2="238" y2="140" stroke="rgba(59,223,184,0.3)" stroke-width="1"/>
+        <text x="248" y="238" font-family="DM Mono,monospace" font-size="8" fill="rgba(59,223,184,0.9)" letter-spacing="1">JOINT</text>
+        <text x="248" y="249" font-family="DM Mono,monospace" font-size="8" fill="rgba(59,223,184,0.9)" letter-spacing="1">SENSOR</text>
+        <text x="248" y="450" font-family="DM Mono,monospace" font-size="8" fill="rgba(74,158,255,0.8)" letter-spacing="1">PRESSURE</text>
+        <text x="248" y="461" font-family="DM Mono,monospace" font-size="8" fill="rgba(74,158,255,0.8)" letter-spacing="1">ARRAY</text>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- STATS BAR -->
+<div class="stats-bar">
+  <div class="stat-item">
+    <div class="stat-num">50–150</div>
+    <div class="stat-label">ms detection window</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num">0–60°</div>
+    <div class="stat-label">critical flex range</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num">&lt;20</div>
+    <div class="stat-label">ms actuator response</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num">2</div>
+    <div class="stat-label">sensor modalities</div>
+  </div>
+</div>
+
+<!-- HOW IT WORKS -->
+<section id="how" class="section-pad">
+  <div class="section-label reveal">System Overview</div>
+  <h2 class="section-title reveal">Three layers.<br>One decision.</h2>
+  <p class="section-sub reveal">Ankered fuses orientation tracking and load-bearing data to make collapse-prevention decisions faster than the human nervous system can react.</p>
+
+  <div class="steps">
+    <div class="step reveal">
+      <div class="step-num">01</div>
+      <svg class="step-icon" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="20" cy="20" r="14" stroke-opacity="0.3"/>
+        <path d="M20 6v4M20 30v4M6 20h4M30 20h4"/>
+        <circle cx="20" cy="20" r="5" fill="currentColor" fill-opacity="0.15"/>
+        <path d="M15 20l3 3 7-7" stroke-width="1.8"/>
+      </svg>
+      <h3>Orientation Sensing</h3>
+      <p>A 3-axis magnetometer mounted on the shin continuously measures lower limb orientation, sampling at high frequency to build a precise angular velocity profile of knee motion throughout each step cycle.</p>
+      <span class="step-tag">Magnetometer · IMU</span>
+    </div>
+    <div class="step reveal reveal-delay-1">
+      <div class="step-num">02</div>
+      <svg class="step-icon" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="8" y="28" width="24" height="6" rx="2"/>
+        <path d="M14 28v-6a6 6 0 1 1 12 0v6"/>
+        <circle cx="20" cy="22" r="2" fill="currentColor"/>
+      </svg>
+      <h3>Ground Contact Detection</h3>
+      <p>Pressure sensors embedded in the shoe sole determine exactly when and where the foot is bearing weight — providing the crucial context that distinguishes a dangerous buckling event from an intentional controlled movement.</p>
+      <span class="step-tag">Plantar Pressure Array</span>
+    </div>
+    <div class="step reveal reveal-delay-2">
+      <div class="step-num">03</div>
+      <svg class="step-icon" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M8 20h6l4-8 4 16 4-8h6" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="20" cy="12" r="2" fill="currentColor" fill-opacity="0.5"/>
+      </svg>
+      <h3>Reactive Deployment</h3>
+      <p>When the system detects a rapid transition from near extension into uncontrolled flexion — within a 0° to 60° range across a 50 to 150 ms window while under load — deployable stabilizers lock within the brace to arrest the collapse and maintain structural integrity.</p>
+      <span class="step-tag">Deployable Stabilizers</span>
+    </div>
+  </div>
+</section>
+
+<!-- DETECTION WINDOW -->
+<section class="detection-section section-pad" id="specs">
+  <div class="detection-grid">
+    <div class="detection-left">
+      <div class="section-label reveal">Detection Parameters</div>
+      <h2 class="section-title reveal">The critical<br>window.</h2>
+      <p class="section-sub reveal" style="margin-bottom:0">Uncontrolled knee buckling follows a consistent biomechanical signature. Ankered's algorithm monitors the exact angular velocity threshold that separates a normal step from an impending fall — and acts before the body can.</p>
+    </div>
+    <div class="detection-visual reveal">
+      <div class="chart-label">Knee Flexion Velocity · Real-Time</div>
+      <div class="signal-chart">
+        <svg viewBox="0 0 400 100" preserveAspectRatio="none">
+          <!-- Grid lines -->
+          <line x1="0" y1="50" x2="400" y2="50" stroke="rgba(59,223,184,0.08)" stroke-width="1"/>
+          <line x1="0" y1="25" x2="400" y2="25" stroke="rgba(59,223,184,0.05)" stroke-width="1"/>
+          <line x1="0" y1="75" x2="400" y2="75" stroke="rgba(59,223,184,0.05)" stroke-width="1"/>
+          <!-- Normal signal -->
+          <polyline points="0,50 30,48 60,44 90,46 120,50 150,52 180,49 210,47" stroke="rgba(59,223,184,0.5)" stroke-width="1.5" fill="none"/>
+          <!-- Spike (danger event) -->
+          <polyline points="210,47 230,42 250,20 255,8 258,4 262,12 268,28 278,50 300,55 330,52 360,50 400,50" stroke="rgba(255,92,92,0.9)" stroke-width="2" fill="none"/>
+          <!-- Threshold line -->
+          <line x1="0" y1="18" x2="400" y2="18" stroke="rgba(255,92,92,0.3)" stroke-width="1" stroke-dasharray="6,4"/>
+          <!-- Area fill danger -->
+          <polygon points="210,47 230,42 250,20 255,8 258,4 262,12 268,28 278,50 210,50" fill="rgba(255,92,92,0.06)"/>
+          <!-- Trigger point -->
+          <circle cx="258" cy="4" r="4" fill="none" stroke="rgba(255,92,92,0.9)" stroke-width="1.5">
+            <animate attributeName="r" values="4;7;4" dur="1.8s" repeatCount="indefinite"/>
+          </circle>
+          <!-- Label -->
+          <text x="268" y="12" font-family="DM Mono,monospace" font-size="7" fill="rgba(255,92,92,0.8)" letter-spacing="1">TRIGGER</text>
+          <text x="2" y="15" font-family="DM Mono,monospace" font-size="6" fill="rgba(255,92,92,0.5)" letter-spacing="1">THRESHOLD</text>
+        </svg>
+      </div>
+
+      <div class="param-grid">
+        <div class="param-card">
+          <div class="param-card-val">0 – 60°</div>
+          <div class="param-card-label">Monitored Flexion Range</div>
+        </div>
+        <div class="param-card">
+          <div class="param-card-val">50 – 150ms</div>
+          <div class="param-card-label">Detection Window</div>
+        </div>
+        <div class="param-card">
+          <div class="param-card-val">Rapid</div>
+          <div class="param-card-label">Transition Signature</div>
+        </div>
+        <div class="param-card">
+          <div class="param-card-val">Load+</div>
+          <div class="param-card-label">Bearing Confirmation</div>
+        </div>
+      </div>
+
+      <div class="alert-bar">
+        <div class="alert-dot"></div>
+        Stabilizer deployment event detected
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TECH SPECS + FEATURES -->
+<section class="specs-section section-pad">
+  <div class="section-label reveal">Technical Breakdown</div>
+  <h2 class="section-title reveal">Precision engineered<br>at every layer.</h2>
+  <p class="section-sub reveal">Every component chosen to minimize latency while maximizing reliability under demanding real-world conditions.</p>
+
+  <div class="specs-layout">
+    <div class="specs-table reveal">
+      <div class="specs-row">
+        <div class="specs-key">Primary Sensor</div>
+        <div class="specs-val accent">3-Axis Magnetometer</div>
+      </div>
+      <div class="specs-row">
+        <div class="specs-key">Sensor Mount</div>
+        <div class="specs-val">Shin / Tibia Segment</div>
+      </div>
+      <div class="specs-row">
+        <div class="specs-key">Load Detection</div>
+        <div class="specs-val">Embedded Pressure Array</div>
+      </div>
+      <div class="specs-row">
+        <div class="specs-key">Trigger Angle</div>
+        <div class="specs-val accent">0° – 60° Flexion</div>
+      </div>
+      <div class="specs-row">
+        <div class="specs-key">Event Window</div>
+        <div class="specs-val accent">50 – 150 ms</div>
+      </div>
+      <div class="specs-row">
+        <div class="specs-key">Actuator Type</div>
+        <div class="specs-val">Deployable Stabilizers</div>
+      </div>
+      <div class="specs-row">
+        <div class="specs-key">Motion Profile</div>
+        <div class="specs-val">Uncontrolled Flexion</div>
+      </div>
+      <div class="specs-row">
+        <div class="specs-key">System Output</div>
+        <div class="specs-val accent">Collapse Prevention</div>
+      </div>
+    </div>
+
+    <div class="features-list">
+      <div class="feature-item reveal">
+        <div class="feature-icon-wrap">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        </div>
+        <div class="feature-body">
+          <h4>Sub-reflex Response Time</h4>
+          <p>Human voluntary motor response averages 150–250ms. Ankered's mechanical deployment is engineered to complete within the 50–150ms detection window — acting before conscious intervention is possible.</p>
+        </div>
+      </div>
+      <div class="feature-item reveal reveal-delay-1">
+        <div class="feature-icon-wrap">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        </div>
+        <div class="feature-body">
+          <h4>Dual-Modal Confirmation</h4>
+          <p>Angular velocity alone is insufficient. Ankered cross-references orientation data with real-time plantar pressure to confirm active weight-bearing — eliminating false positives during seated or passive leg movement.</p>
+        </div>
+      </div>
+      <div class="feature-item reveal reveal-delay-2">
+        <div class="feature-icon-wrap">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div class="feature-body">
+          <h4>Passive Safety Architecture</h4>
+          <p>The system's default state is unlocked and unintrusive, allowing full range of motion during normal gait. Stabilizers only engage when the specific biomechanical signature of uncontrolled collapse is detected.</p>
+        </div>
+      </div>
+      <div class="feature-item reveal reveal-delay-3">
+        <div class="feature-icon-wrap">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2v-4M9 21H5a2 2 0 0 1-2-2v-4m0 0h18"/></svg>
+        </div>
+        <div class="feature-body">
+          <h4>Continuous Orientation Mapping</h4>
+          <p>The magnetometer builds a continuous model of limb position throughout the gait cycle, enabling the system to distinguish between similar angular changes that are normal (controlled stepping) versus dangerous (buckling).</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- USE CASES -->
+<section id="use-cases" class="use-cases-section section-pad">
+  <div class="section-label reveal">Applications</div>
+  <h2 class="section-title reveal">Who Ankered<br>protects.</h2>
+  <p class="section-sub reveal">Knee instability affects millions across clinical, athletic, and occupational contexts. Ankered's platform adapts to each environment.</p>
+
+  <div class="use-cases-grid">
+    <div class="use-card reveal">
+      <div class="use-card-num">01 / CLINICAL</div>
+      <h3>Post-Surgical Rehabilitation</h3>
+      <p>ACL reconstruction, total knee replacement, and meniscal repair patients face elevated collapse risk during early mobilization. Ankered provides an active safety layer that supports recovery without restricting therapeutic movement.</p>
+      <div class="use-card-tag">Rehab · Orthopaedics</div>
+      <div class="use-card-accent"></div>
+    </div>
+    <div class="use-card reveal reveal-delay-1">
+      <div class="use-card-num">02 / NEUROLOGICAL</div>
+      <h3>Neuromuscular Conditions</h3>
+      <p>Patients with MS, stroke-related hemiplegia, Parkinson's disease, and peripheral neuropathy experience unpredictable episodes of knee buckling. Ankered operates as a constant mechanical safety net — providing confidence and fall prevention in daily life.</p>
+      <div class="use-card-tag">MS · Stroke · Parkinson's</div>
+      <div class="use-card-accent"></div>
+    </div>
+    <div class="use-card reveal reveal-delay-2">
+      <div class="use-card-num">03 / ATHLETIC</div>
+      <h3>Return-to-Sport Confidence</h3>
+      <p>Athletes returning from knee injury face psychological barriers alongside physical ones. Ankered's real-time protection enables athletes to push through rehabilitation thresholds knowing a mechanical safeguard is active during every training session.</p>
+      <div class="use-card-tag">Sport · Performance</div>
+      <div class="use-card-accent"></div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section id="contact" class="cta-section">
+  <div class="cta-glow"></div>
+  <div class="section-label reveal" style="justify-content:center">Early Access</div>
+  <h2 class="reveal">Ready to stay<br><span>grounded?</span></h2>
+  <p class="reveal">Join our clinical pilot program or request a technical briefing.</p>
+  <div class="cta-actions reveal">
+    <a href="#" class="btn-primary">Request Early Access</a>
+    <a href="#" class="btn-ghost">Clinical Partnerships</a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">Ank<span>er</span>ed</div>
+  <div class="footer-copy">© 2025 Ankered Inc. — Reactive Stabilization Technology</div>
+  <div class="footer-links">
+    <a href="#">Technology</a>
+    <a href="#">Clinical</a>
+    <a href="#">Contact</a>
+  </div>
+</footer>
+
+<script>
+  // Custom cursor
+  const cursor = document.getElementById('cursor');
+  const ring = document.getElementById('cursor-ring');
+  let mx = 0, my = 0, rx = 0, ry = 0;
+  document.addEventListener('mousemove', e => {
+    mx = e.clientX; my = e.clientY;
+    cursor.style.left = mx + 'px';
+    cursor.style.top = my + 'px';
+  });
+  function animRing() {
+    rx += (mx - rx) * 0.12;
+    ry += (my - ry) * 0.12;
+    ring.style.left = rx + 'px';
+    ring.style.top = ry + 'px';
+    requestAnimationFrame(animRing);
+  }
+  animRing();
+  document.querySelectorAll('a, button').forEach(el => {
+    el.addEventListener('mouseenter', () => {
+      ring.style.width = '56px';
+      ring.style.height = '56px';
+      ring.style.borderColor = 'rgba(59,223,184,0.7)';
+    });
+    el.addEventListener('mouseleave', () => {
+      ring.style.width = '36px';
+      ring.style.height = '36px';
+      ring.style.borderColor = 'rgba(59,223,184,0.4)';
+    });
+  });
+
+  // Scroll reveal
+  const reveals = document.querySelectorAll('.reveal');
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        obs.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.12 });
+  reveals.forEach(r => obs.observe(r));
+</script>
+</body>
+</html>
